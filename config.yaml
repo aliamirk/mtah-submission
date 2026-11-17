@@ -1,0 +1,116 @@
+# =========================================================================
+# Possession Pipeline — Configuration
+# All thresholds and weights are here; never hardcode numeric constants
+# in source files.  Dimensions are in metres, speeds in m/s, times in s,
+# angles in radians, counts in frames.
+# =========================================================================
+
+# ---------------------------------------------------------------------------
+# Pitch dimensions
+# ---------------------------------------------------------------------------
+pitch_length: 105.3   # metres (x-axis: left goal line → right goal line)
+pitch_width:  68.0    # metres (y-axis: bottom touchline → top touchline)
+
+# ---------------------------------------------------------------------------
+# Video / tracking frame rate
+# ---------------------------------------------------------------------------
+fps: 25               # frames per second (tactical ATD)
+
+# ---------------------------------------------------------------------------
+# Non-play regions: [first_frame, last_frame] inclusive
+# These ranges are hard-masked as "D" regardless of Smart Tags.
+# ---------------------------------------------------------------------------
+nonplay_regions:
+  - [0,      11184]   # pre-match (before first-half kick-off)
+  - [90652, 113741]   # half-time break + pre-kickoff gap (2nd-half KO tag fires at 113660)
+  - [190198, 199318]  # post-match (after last graded frame)
+
+# ---------------------------------------------------------------------------
+# Ball-motion event detection
+# ---------------------------------------------------------------------------
+speed_jump_threshold:        3.0   # m/s  — speed change that fires a speed-jump event
+direction_change_threshold:  0.52  # rad  — ~30° direction change (with min speed guard)
+min_speed_for_direction:     1.0   # m/s  — minimum ball speed for direction-change trigger
+stop_speed_threshold:        0.5   # m/s  — below this the ball is considered stopped
+reappear_gap_threshold:      5     # frames of absence before reappearance fires an event
+
+# ---------------------------------------------------------------------------
+# Control-score weights (per-player terms)
+# ---------------------------------------------------------------------------
+w_distance:  1.0
+w_approach:  0.5
+w_ball_side: 0.3
+w_space:     0.2
+
+# ---------------------------------------------------------------------------
+# Label decision thresholds
+# ---------------------------------------------------------------------------
+home_threshold:  0.60   # p_home >= this  →  H
+away_threshold:  0.40   # p_home <= this  →  A
+epsilon:         1.0e-6 # denominator guard in p_home normalisation
+
+# ---------------------------------------------------------------------------
+# Possession stability
+# ---------------------------------------------------------------------------
+max_carry_gap:               25   # frames; beyond this, missing ball → X
+min_lock_frames:             8    # frames the new label is locked after a team change
+consecutive_events_required:  2   # events needed to confirm a change (no strong signal)
+confirm_threshold_low:       0.30 # p_home below this → strong away signal (bypasses confirmation)
+confirm_threshold_high:      0.70 # p_home above this → strong home signal (bypasses confirmation)
+
+# ---------------------------------------------------------------------------
+# Smart Tag priors  (used by legacy ControlScorer — kept for reference)
+# ---------------------------------------------------------------------------
+tag_prior_weight:        0.1  # bonus added to home_sum or away_sum per tagged frame
+dead_ball_buffer_frames: 5    # frames padded either side of a dead-ball Smart Tag interval
+dead_ball_max_duration_frames: 150  # cap each tag's dead window to this many frames from its start
+
+# ---------------------------------------------------------------------------
+# AnchoredVoteAssigner parameters
+# ---------------------------------------------------------------------------
+# Half-width of the rolling majority-vote window in frames.
+# Full window = 2 * vote_half_window + 1 frames.
+# 150 frames ≈ 6 s — long enough to span most possession spells, short
+# enough to track genuine handovers.
+vote_half_window: 50
+
+# Weight given to each named-team Smart Tag frame in the vote.
+# A value of 3.0 means one tag-frame counts as 3 nearest-player frames,
+# which is strong enough to anchor restarts without overriding sustained
+# nearest-player evidence from long possessions.
+tag_vote_weight: 0
+
+# Minimum possession spell length in frames.  Runs shorter than this are
+# collapsed into the surrounding label, eliminating single-frame flips that
+# would split a possession spell without being real transitions.
+# 12 frames ≈ 0.48 s.
+min_spell_frames: 12
+
+# ---------------------------------------------------------------------------
+# Restart prior (Experiment 1.3)
+# ---------------------------------------------------------------------------
+# After a named-team dead-ball interval ends, apply the tag team's signal
+# for this many frames to help anchor the restart transition.
+# 50 frames ≈ 2 s at 25 fps.
+restart_prior_frames: 50
+
+# Weight of the restart prior in the rolling vote.  Each frame of the prior
+# contributes this many vote counts.  1.0 = one extra vote-count per frame,
+# comparable in magnitude to a single nearest-player signal.
+restart_prior_weight: 1.0
+
+switch_penalty: 30
+soft_evidence: false
+evidence_a: 0.2
+evidence_b: 0.29
+evidence_cap: 3.5
+quiet_enabled: true
+quiet_speed_threshold: 1.4
+quiet_min_seconds: 12
+quiet_bridge_seconds: 3
+quiet_smooth_frames: 50
+restart_from_runs: true
+reach_enabled: false
+reach_gate_mps: 10.0
+reach_horizon_s: 0.5
+gap_switch_policy: current
